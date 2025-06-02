@@ -1,0 +1,30 @@
+services:
+  llama-server:
+    image: ubuntu:22.04
+    ports:
+      - "5656:5656"
+    volumes:
+      - /mnt/c/Users/Raghu/Downloads/Llama_cpp_Ubuntu_Binaries/llama-b5568-bin-ubuntu-x64/build/bin:/app/bin
+      - /mnt/c/Users/Raghu/Downloads/Llama_cpp_Ubuntu_Binaries/models:/app/models
+    command: >
+      sh -c "apt-get update &&
+             apt-get install -y --no-install-recommends curl libcurl4 libgomp1 &&
+             export LD_LIBRARY_PATH=/app/bin:$LD_LIBRARY_PATH &&
+             chmod +x /app/bin/llama-server &&
+             cd /app/bin &&
+             ./llama-server -m /app/models/qwen_3_600M.gguf --host 0.0.0.0 --port 5656"
+
+  fastapi:
+    image: python:3.11-slim
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./fastapi_backend:/app
+    working_dir: /app
+    command: >
+      sh -c "pip install -r requirements.txt &&
+             uvicorn main:app --host 0.0.0.0 --port 8000"
+    environment:
+      - LLAMA_SERVER_URL=http://llama-server:5656
+    depends_on:
+      - llama-server
